@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고등학교 토마토 재배 관찰일지 시스템</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Growth Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter & Noto Sans KR -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        .bg-tomato-light { background-color: #fff5f5; }
+        .text-tomato { color: #e53e3e; }
+        .bg-tomato { background-color: #e53e3e; }
+        .border-tomato { border-color: #e53e3e; }
+        .hover\:bg-tomato-dark:hover { background-color: #c53030; }
+        
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 text-xl font-bold shadow-sm">
+                        <i class="fa-solid fa-seedling"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg text-slate-800 leading-tight">토마토 재배 관찰일지</h1>
+                        <p class="text-xs text-slate-500">고등학교 농업·생명과학 실습 모니터링</p>
+                    </div>
+                </div>
+
+                <!-- Mode Switcher Buttons -->
+                <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl">
+                    <button id="btn-mode-student" onclick="switchRole('student')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition duration-200 bg-white text-slate-800 shadow-sm">
+                        <i class="fa-solid fa-user-graduate mr-1.5 text-emerald-600"></i>학생 모드
+                    </button>
+                    <button id="btn-mode-teacher" onclick="switchRole('teacher')" class="px-4 py-1.5 text-xs font-semibold rounded-lg transition duration-200 text-slate-600 hover:text-slate-800">
+                        <i class="fa-solid fa-chalkboard-user mr-1.5 text-red-500"></i>교사 관리자
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Banner / Sync Status -->
+    <div id="sync-banner" class="bg-emerald-50 border-b border-emerald-100 py-1.5 px-4 text-xs text-emerald-700 flex justify-between items-center max-w-7xl mx-auto w-full">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="sync-text">실시간 데이터를 연동하고 있습니다...</span>
+        </div>
+        <div id="role-badge" class="font-medium bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded text-[10px]">
+            학생 작성 모드
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- =================================================================== -->
+        <!-- STUDENT VIEW SECTION                                                -->
+        <!-- =================================================================== -->
+        <section id="section-student" class="space-y-6">
+
+            <!-- Student Sub-Navigation Tabs -->
+            <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-2 gap-2">
+                <div class="flex space-x-2">
+                    <button onclick="setStudentTab('new')" id="tab-btn-new" class="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white shadow-sm flex items-center">
+                        <i class="fa-solid fa-pen-to-square mr-2"></i>새 일지 작성
+                    </button>
+                    <button onclick="setStudentTab('list')" id="tab-btn-list" class="px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 flex items-center">
+                        <i class="fa-solid fa-list-check mr-2"></i>내 일지 목록 & 수정
+                    </button>
+                    <button onclick="setStudentTab('chart')" id="tab-btn-chart" class="px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 flex items-center">
+                        <i class="fa-solid fa-chart-line mr-2"></i>생육 그래프
+                    </button>
+                </div>
+
+                <div class="text-xs text-slate-500 flex items-center bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                    <i class="fa-solid fa-key text-amber-500 mr-1.5"></i>
+                    <span>일지 조회/수정 시 작성 시 입력한 <b>비밀번호</b>가 필요합니다.</span>
+                </div>
+            </div>
+
+            <!-- TAB 1: NEW JOURNAL FORM -->
+            <div id="student-tab-new" class="block">
+                <form id="form-journal" onsubmit="handleJournalSubmit(event)" class="space-y-6">
+                    <input type="hidden" id="editing-doc-id" value="">
+
+                    <div class="flex justify-between items-center bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-circle-info text-amber-600 text-base"></i>
+                            <span>실습 당일 관찰한 토마토 수치를 정확히 기록하고 사진 및 관찰 그림을 첨부하세요.</span>
+                        </div>
+                        <span id="form-mode-label" class="font-bold bg-amber-200 px-2.5 py-1 rounded-md text-amber-900">신규 작성 중</span>
+                    </div>
+
+                    <!-- 1. 기본 정보 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center">
+                                <span class="w-2 h-5 bg-red-500 rounded-full mr-2 inline-block"></span>1. 기본 정보
+                            </h3>
+                            <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-semibold">필수</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">작성일</label>
+                                <input type="date" id="field-date" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">학년/반/번호</label>
+                                <input type="text" id="field-class" placeholder="예: 2학년 3반 15번" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">이름</label>
+                                <input type="text" id="field-student-name" placeholder="학생 성명" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">재배 회차(주차)</label>
+                                <div class="relative">
+                                    <input type="number" min="1" max="50" id="field-week" placeholder="1" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">주차</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">파종 후 경과일</label>
+                                <div class="relative">
+                                    <input type="number" min="0" id="field-days" placeholder="25" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">일차</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1 text-red-600">수정 비밀번호 <i class="fa-solid fa-lock text-[10px]"></i></label>
+                                <input type="password" id="field-password" placeholder="4자리 숫자" required maxlength="10" class="w-full px-3 py-2 text-sm border border-red-300 bg-red-50/30 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 생육 관찰 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center">
+                                <span class="w-2 h-5 bg-emerald-500 rounded-full mr-2 inline-block"></span>2. 생육 관찰
+                            </h3>
+                            <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-semibold">필수</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">초장 (식물 키)</label>
+                                <div class="relative">
+                                    <input type="number" step="0.1" id="field-height" placeholder="0.0" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">cm</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">잎 개수</label>
+                                <div class="relative">
+                                    <input type="number" id="field-leaf-count" placeholder="0" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">장</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">줄기 굵기</label>
+                                <div class="relative">
+                                    <input type="number" step="0.1" id="field-stem" placeholder="0.0" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">mm</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">잎 색깔</label>
+                                <select id="field-leaf-color" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                                    <option value="">선택하세요</option>
+                                    <option value="진한 초록">진한 초록 (건강)</option>
+                                    <option value="연두색/옅은 초록">연두색 / 옅은 초록</option>
+                                    <option value="황화 현상(노란색)">황화 현상 (노란색)</option>
+                                    <option value="갈색 반점">갈색 반점 / 갈변</option>
+                                    <option value="기타">기타</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">뿌리 상태</label>
+                                <select id="field-root-condition" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                                    <option value="">선택하세요</option>
+                                    <option value="양호 (흰색 뿌리/발달 우수)">양호 (흰색 뿌리/발달 우수)</option>
+                                    <option value="발근 시작 (세근 발생)">발근 시작 (세근 발생)</option>
+                                    <option value="과습/갈변 (생육 저해)">과습/갈변 (생육 저해)</option>
+                                    <option value="뿌리 노출/묘출">뿌리 노출/묘출</option>
+                                    <option value="기타">기타</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">개화·결실 여부</label>
+                                <select id="field-flowering" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                                    <option value="영양 생장기 (미개화)">영양 생장기 (미개화)</option>
+                                    <option value="꽃봉오리 형성">꽃봉오리 형성</option>
+                                    <option value="개화 중">개화 중</option>
+                                    <option value="착과 (초록 열매)">착과 (초록 열매)</option>
+                                    <option value="착색/수확기 (빨간 열매)">착색/수확기 (빨간 열매)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 환경 조건 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center">
+                                <span class="w-2 h-5 bg-sky-500 rounded-full mr-2 inline-block"></span>3. 환경 조건
+                            </h3>
+                            <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-semibold">필수</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">기온</label>
+                                <div class="relative">
+                                    <input type="number" step="0.1" id="field-temp" placeholder="22.5" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">°C</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">습도</label>
+                                <div class="relative">
+                                    <input type="number" id="field-humidity" placeholder="60" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">날씨</label>
+                                <select id="field-weather" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white">
+                                    <option value="맑음">맑음 ☀️</option>
+                                    <option value="흐림">흐림 ☁️</option>
+                                    <option value="구름많음">구름많음 ⛅</option>
+                                    <option value="비">비 🌧️</option>
+                                    <option value="눈">눈 ❄️</option>
+                                    <option value="기타">기타</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">급수량</label>
+                                <div class="relative">
+                                    <input type="number" id="field-water" placeholder="200" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none pr-8">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400">ml</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">비료·시비 여부</label>
+                                <select id="field-fertilizer" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none bg-white">
+                                    <option value="없음">시비 없음</option>
+                                    <option value="액체 비료 (액비)">액체 비료 (액비) 투여</option>
+                                    <option value="복합 알갱이 비료">복합 알갱이 비료</option>
+                                    <option value="유기질 엽면시비">유기질 엽면시비</option>
+                                    <option value="기타">기타 영양제</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. 병해충 관찰 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center">
+                                <span class="w-2 h-5 bg-amber-500 rounded-full mr-2 inline-block"></span>4. 병해충 관찰
+                            </h3>
+                            <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-semibold">권장</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">이상 증상 유무</label>
+                                <select id="field-pest-yn" onchange="togglePestFields()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                    <option value="N">정상 (이상 없음)</option>
+                                    <option value="Y">이상 증상 발견됨</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">증상 종류</label>
+                                <select id="field-pest-type" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                    <option value="해당없음">해당 없음</option>
+                                    <option value="진딧물">진딧물</option>
+                                    <option value="잎곰팡이병">잎곰팡이병</option>
+                                    <option value="응애">응애</option>
+                                    <option value="배꼽썩음병">배꼽썩음병</option>
+                                    <option value="잎말림 현상">잎말림 현상</option>
+                                    <option value="기타">기타 이상 증상</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">발생 부위</label>
+                                <select id="field-pest-part" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                    <option value="해당없음">해당 없음</option>
+                                    <option value="새잎/신초">새잎 / 신초</option>
+                                    <option value="하엽/성숙잎">하엽 / 성숙잎</option>
+                                    <option value="줄기">줄기</option>
+                                    <option value="꽃/열매">꽃 / 열매</option>
+                                    <option value="토양/뿌리부근">토양 / 뿌리 부근</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">대응 조치 내용</label>
+                                <input type="text" id="field-pest-action" placeholder="예: 해충 손으로 제거, 환기 강화 등" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. 기록·성찰 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center">
+                                <span class="w-2 h-5 bg-purple-500 rounded-full mr-2 inline-block"></span>5. 기록·성찰
+                            </h3>
+                            <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-semibold">필수</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">오늘의 활동 내용</label>
+                                <textarea id="field-act-today" rows="3" required placeholder="오늘 진행한 재배 실습 (순 지르기, 곁순 제거, 유인작업, 물주기 등)을 서술하세요." class="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">관찰 소감 및 느낀 점</label>
+                                <textarea id="field-reflection" rows="3" required placeholder="토마토의 변화 과정을 보며 느낀 생각이나 학습한 점을 기록하세요." class="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1 text-purple-700">궁금한 점 · 교사 질문 <span class="text-slate-400 font-normal">(선택)</span> <i class="fa-solid fa-circle-question ml-1"></i></label>
+                                <textarea id="field-question" rows="3" placeholder="선생님께 물어보고 싶은 실습 관련 질문이 있다면 자유롭게 작성하세요." class="w-full p-3 text-sm border border-purple-200 bg-purple-50/30 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">다음 재배 실습 계획</label>
+                                <textarea id="field-next-plan" rows="3" required placeholder="다음 시간에 관찰하거나 관리할 구체적인 계획을 작성하세요." class="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. 첨부 자료 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-800 text-base flex items-center">
+                                <span class="w-2 h-5 bg-indigo-500 rounded-full mr-2 inline-block"></span>6. 첨부 자료
+                            </h3>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold">선택</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Multi-Photo Upload -->
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <label class="block text-xs font-semibold text-slate-600">관찰 사진 첨부 <span class="text-red-500 text-[11px]">(다중 선택 가능)</span></label>
+                                    <span id="photo-count-badge" class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">0장 선택됨</span>
+                                </div>
+                                <div class="border-2 border-dashed border-slate-300 rounded-xl p-3 text-center hover:bg-slate-50 transition cursor-pointer relative" onclick="document.getElementById('file-photos').click()">
+                                    <input type="file" id="file-photos" accept="image/*" multiple class="hidden" onchange="handleMultiplePhotosUpload(event)">
+                                    <div class="py-2 text-slate-400">
+                                        <i class="fa-solid fa-images text-2xl mb-1 text-slate-400"></i>
+                                        <p class="text-xs font-medium text-slate-600">클릭하여 사진 추가 (다중 선택 가능)</p>
+                                        <p class="text-[10px] text-slate-400">최소 2장 이상 첨부를 권장합니다</p>
+                                    </div>
+                                </div>
+                                <div id="photos-preview-list" class="grid grid-cols-2 gap-2 mt-2">
+                                    <!-- Dynamic thumbnails -->
+                                </div>
+                            </div>
+
+                            <!-- Interactive Sketch Canvas -->
+                            <div class="space-y-2 md:col-span-2">
+                                <div class="flex justify-between items-center">
+                                    <label class="block text-xs font-semibold text-slate-600">스케치 · 세부 관찰 그림 직접 그리기</label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="color" id="canvas-color" value="#121212" class="w-6 h-6 rounded cursor-pointer border-0">
+                                        <button type="button" onclick="clearCanvas()" class="px-2 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 rounded">
+                                            <i class="fa-solid fa-eraser mr-1"></i>지우기
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-inner relative">
+                                    <canvas id="sketch-canvas" width="500" height="180" class="w-full h-44 cursor-crosshair touch-none bg-slate-50"></canvas>
+                                </div>
+                                <p class="text-[11px] text-slate-400"><i class="fa-solid fa-hand-pointer mr-1"></i>마우스나 터치로 잎이나 꽃, 병해충 위치를 직접 스케치할 수 있습니다.</p>
+                            </div>
+                        </div>
+
+                        <!-- Reference URL -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">참고 자료 URL (링크)</label>
+                            <input type="url" id="field-reference-url" placeholder="https://..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                        <button type="button" onclick="resetForm()" class="px-5 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+                            <i class="fa-solid fa-rotate-left mr-1.5"></i>초기화
+                        </button>
+                        <button type="submit" id="btn-submit-log" class="px-8 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md transition flex items-center">
+                            <i class="fa-solid fa-paper-plane mr-2"></i><span id="submit-btn-text">관찰일지 제출하기</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 2: MY LOGS & EDIT CODE VERIFICATION -->
+            <div id="student-tab-list" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
+                    <div class="flex items-center space-x-2 w-full md:w-auto">
+                        <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+                        <input type="text" id="student-search-name" placeholder="작성자 이름 검색" onkeyup="filterStudentLogs()" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 w-full sm:w-48">
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        * 본인이 제출한 일지를 수정하려면 제출 시 입력한 비밀번호가 일치해야 합니다.
+                    </div>
+                </div>
+
+                <div id="student-logs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-red-500"></i>
+                        <p class="text-sm">관찰일지 데이터를 불러오는 중입니다...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: GROWTH GRAPH -->
+            <div id="student-tab-chart" class="hidden space-y-4">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">토마토 생육 추이 그래프 (초장 & 잎 개수)</h3>
+                            <p class="text-xs text-slate-500">주차별 생육 변화를 시각적으로 확인합니다.</p>
+                        </div>
+                    </div>
+                    <div class="h-80 w-full relative">
+                        <canvas id="student-growth-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TEACHER VIEW SECTION                                                -->
+        <!-- =================================================================== -->
+        <section id="section-teacher" class="hidden space-y-6">
+
+            <!-- Teacher Lock Screen Overlay -->
+            <div id="teacher-lock-screen" class="bg-white p-8 rounded-2xl border border-slate-200 shadow-md text-center max-w-md mx-auto my-12 space-y-4">
+                <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">교사 인증이 필요합니다</h3>
+                <p class="text-xs text-slate-500">학생들의 일지 검토 및 피드백 작성을 위해 교사 인증 비밀번호를 입력하세요.</p>
+                
+                <div class="flex justify-center space-x-2">
+                    <input type="password" id="teacher-pin-input" placeholder="비밀번호 입력" class="px-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none w-48 text-center" onkeyup="if(event.key==='Enter') unlockTeacherMode()">
+                    <button onclick="unlockTeacherMode()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg shadow">
+                        확인
+                    </button>
+                </div>
+                <p id="teacher-pin-err" class="text-xs text-red-500 hidden">비밀번호가 올바르지 않습니다.</p>
+            </div>
+
+            <!-- Teacher Dashboard (Visible when unlocked) -->
+            <div id="teacher-dashboard" class="hidden space-y-6">
+
+                <!-- Summary Stat Widgets -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">총 제출 일지</p>
+                            <h4 id="stat-total-count" class="text-2xl font-black text-slate-800 mt-1">0건</h4>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-file-invoice"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">검토 대기중</p>
+                            <h4 id="stat-pending-count" class="text-2xl font-black text-amber-600 mt-1">0건</h4>
+                        </div>
+                        <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">질문 접수</p>
+                            <h4 id="stat-questions-count" class="text-2xl font-black text-purple-600 mt-1">0건</h4>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-comments"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">확인 완료 비율</p>
+                            <h4 id="stat-done-rate" class="text-2xl font-black text-emerald-600 mt-1">0%</h4>
+                        </div>
+                        <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Filters Bar -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <!-- Grade/Class Filter -->
+                        <select id="teacher-filter-class" onchange="renderTeacherDashboard()" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="ALL">전체 학년/반</option>
+                        </select>
+
+                        <!-- Status Filter -->
+                        <select id="teacher-filter-status" onchange="renderTeacherDashboard()" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <option value="ALL">전체 확인 상태</option>
+                            <option value="PENDING">검토 대기중 (미확인)</option>
+                            <option value="CONFIRMED">교사 확인 완료</option>
+                            <option value="QUESTION">질문 있음</option>
+                        </select>
+
+                        <!-- Student Name Search -->
+                        <input type="text" id="teacher-search-input" placeholder="학생 이름 검색" onkeyup="renderTeacherDashboard()" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="exportToCSV()" class="px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm">
+                            <i class="fa-solid fa-file-excel mr-1"></i>엑셀/CSV 다운로드
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Submissions Table -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 text-xs font-semibold border-b border-slate-200">
+                                    <th class="py-3.5 px-4">작성일</th>
+                                    <th class="py-3.5 px-4">학년/반/번호</th>
+                                    <th class="py-3.5 px-4">이름</th>
+                                    <th class="py-3.5 px-4 text-center">회차(주차)</th>
+                                    <th class="py-3.5 px-4">초장 / 잎개수</th>
+                                    <th class="py-3.5 px-4">병해충 여부</th>
+                                    <th class="py-3.5 px-4 text-center">학생 질문</th>
+                                    <th class="py-3.5 px-4 text-center">교사 확인</th>
+                                    <th class="py-3.5 px-4 text-center">상세 검토 & 평가</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacher-table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+                                <!-- Dynamic rows rendered by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL: JOURNAL DETAIL & TEACHER FEEDBACK -->
+    <div id="modal-detail" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <!-- Modal Header -->
+            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                    <h3 class="font-bold text-base" id="modal-title">토마토 재배 관찰일지 상세보기</h3>
+                </div>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div id="modal-body-content" class="p-6 overflow-y-auto space-y-6 flex-grow text-xs sm:text-sm">
+                <!-- Injected dynamically via JavaScript -->
+            </div>
+
+            <!-- Modal Footer / Teacher Comment Action Box -->
+            <div id="modal-teacher-controls" class="bg-slate-50 border-t border-slate-200 p-4 space-y-3">
+                <h4 class="font-bold text-slate-800 text-xs flex items-center text-red-600">
+                    <i class="fa-solid fa-pen-nib mr-1.5"></i>교사 확인 및 피드백 작성 (교사용)
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="sm:col-span-3">
+                        <textarea id="modal-teacher-comment" rows="2" placeholder="학생의 관찰일지에 대한 칭찬 및 지도 조언을 남겨주세요." class="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">평가 등급</label>
+                        <select id="modal-teacher-grade" class="w-full p-2 text-xs border border-slate-300 rounded-lg bg-white mb-2">
+                            <option value="A+">A+ (매우 우수)</option>
+                            <option value="A">A (우수)</option>
+                            <option value="B">B (보통)</option>
+                            <option value="C">C (보완 필요)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-wrap justify-between items-center pt-2 gap-2 border-t border-slate-200">
+                    <button onclick="deleteCurrentJournal()" class="px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition">
+                        <i class="fa-solid fa-trash mr-1"></i>일지 삭제
+                    </button>
+                    <div class="flex space-x-2">
+                        <button onclick="saveTeacherFeedback(false)" class="px-4 py-1.5 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg transition">
+                            피드백만 저장
+                        </button>
+                        <button onclick="saveTeacherFeedback(true)" class="px-4 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow transition">
+                            <i class="fa-solid fa-check-double mr-1"></i>확인 완료 및 피드백 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VERIFY STUDENT PASSWORD FOR EDITING / VIEWING -->
+    <div id="modal-auth" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <h3 id="auth-modal-title" class="font-bold text-slate-800 text-base">비밀번호 확인</h3>
+                <p id="auth-modal-desc" class="text-xs text-slate-500">일지 내용을 확인하거나 수정하려면 작성 시 설정한 비밀번호를 입력해주세요.</p>
+            </div>
+            <div>
+                <input type="password" id="auth-input-pass" placeholder="비밀번호 입력" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 text-center font-mono" onkeyup="if(event.key==='Enter') confirmStudentAuth()">
+                <p id="auth-err-msg" class="text-xs text-red-500 mt-1 hidden text-center">비밀번호가 일치하지 않습니다.</p>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="closeAuthModal()" class="flex-1 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">취소</button>
+                <button onclick="confirmStudentAuth()" class="flex-1 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm">인증 및 확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase JS SDK setup for real-time storage -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tomato-journal-app';
+        
+        const defaultConfig = {
+            apiKey: "AIzaSyDummyKeyForInitializationOnly",
+            authDomain: "tomato-journal.firebaseapp.com",
+            projectId: "tomato-journal",
+            storageBucket: "tomato-journal.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef"
+        };
+
+        let firebaseConfig = defaultConfig;
+        if (typeof __firebase_config !== 'undefined') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.warn('Using default Firebase configuration fallback');
+            }
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global State Variables
+        window.db = db;
+        window.appId = appId;
+        window.currentRole = 'student';
+        window.isTeacherUnlocked = false;
+        window.teacherPin = "3571";
+        window.allJournals = [];
+        window.currentEditingDocId = null;
+        window.pendingAuthDoc = null;
+        window.studentGrowthChartInstance = null;
+        window.currentUser = null;
+
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.warn('Auth fallback:', err);
+                await signInAnonymously(auth);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUser = user;
+                document.getElementById('sync-text').innerText = '실시간 데이터가 동기화되었습니다.';
+                subscribeToJournals();
+            }
+        });
+
+        initAuth();
+
+        function subscribeToJournals() {
+            if (!window.currentUser) return;
+
+            const journalsRef = collection(db, 'artifacts', appId, 'public', 'data', 'tomato_journals');
+
+            onSnapshot(journalsRef, (snapshot) => {
+                const logs = [];
+                snapshot.forEach((doc) => {
+                    logs.push({ id: doc.id, ...doc.data() });
+                });
+
+                logs.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+                window.allJournals = logs;
+
+                // Update UI views
+                if (typeof renderStudentLogsList === 'function') renderStudentLogsList();
+                if (typeof renderTeacherDashboard === 'function') renderTeacherDashboard();
+                if (typeof renderStudentGrowthChart === 'function') renderStudentGrowthChart();
+            }, (error) => {
+                console.error("Firestore listener error:", error);
+                document.getElementById('sync-text').innerText = '데이터를 불러오는 중 오류가 발생했습니다.';
+            });
+        }
+
+        window.saveJournalDoc = async function(journalData, docId = null) {
+            if (!window.currentUser) {
+                alert('사용자 인증 후 이용해주세요.');
+                return false;
+            }
+
+            try {
+                if (docId) {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tomato_journals', docId);
+                    await updateDoc(docRef, {
+                        ...journalData,
+                        updatedAt: new Date().toISOString()
+                    });
+                } else {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'tomato_journals');
+                    await addDoc(colRef, {
+                        ...journalData,
+                        createdAt: new Date().toISOString(),
+                        isTeacherConfirmed: false,
+                        teacherComment: '',
+                        teacherGrade: ''
+                    });
+                }
+                return true;
+            } catch (e) {
+                console.error("Error saving journal:", e);
+                alert("저장 중 오류가 발생했습니다: " + e.message);
+                return false;
+            }
+        };
+
+        window.updateTeacherFeedbackDoc = async function(docId, comment, grade, isConfirmed) {
+            if (!window.currentUser) return false;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tomato_journals', docId);
+                await updateDoc(docRef, {
+                    teacherComment: comment,
+                    teacherGrade: grade,
+                    isTeacherConfirmed: isConfirmed,
+                    reviewedAt: new Date().toISOString()
+                });
+                return true;
+            } catch (e) {
+                console.error("Error updating teacher feedback:", e);
+                alert("피드백 저장 실패: " + e.message);
+                return false;
+            }
+        };
+
+        window.deleteJournalDoc = async function(docId) {
+            if (!window.currentUser) return false;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tomato_journals', docId);
+                await deleteDoc(docRef);
+                return true;
+            } catch (e) {
+                console.error("Error deleting document:", e);
+                alert("삭제 실패: " + e.message);
+                return false;
+            }
+        };
+    </script>
+
+    <script>
+        let canvas, ctx;
+        let isDrawing = false;
+        let photosArray = [];
+        let pendingAuthAction = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('field-date');
+            if (dateInput) dateInput.value = today;
+
+            canvas = document.getElementById('sketch-canvas');
+            if (canvas) {
+                ctx = canvas.getContext('2d');
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#121212';
+
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseleave', stopDrawing);
+
+                canvas.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    ctx.beginPath();
+                    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                    isDrawing = true;
+                    e.preventDefault();
+                });
+                canvas.addEventListener('touchmove', (e) => {
+                    if (!isDrawing) return;
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = document.getElementById('canvas-color').value;
+                    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                    ctx.stroke();
+                    e.preventDefault();
+                });
+                canvas.addEventListener('touchend', () => { isDrawing = false; });
+            }
+        });
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = document.getElementById('canvas-color').value;
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearCanvas() {
+            if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function handleMultiplePhotosUpload(event) {
+            const files = Array.from(event.target.files);
+            if (!files || files.length === 0) return;
+
+            files.forEach(file => {
+                if (file.size > 3 * 1024 * 1024) {
+                    alert(`${file.name} 사진은 크기가 3MB 이하만 등록 가능합니다.`);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photosArray.push(e.target.result);
+                    renderPhotoPreviews();
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function removePhotoAt(index) {
+            photosArray.splice(index, 1);
+            renderPhotoPreviews();
+        }
+
+        function renderPhotoPreviews() {
+            const container = document.getElementById('photos-preview-list');
+            const badge = document.getElementById('photo-count-badge');
+            if (!container) return;
+
+            badge.innerText = `${photosArray.length}장 선택됨`;
+
+            if (photosArray.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = photosArray.map((p, idx) => `
+                <div class="relative group border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                    <img src="${p}" class="w-full h-20 object-cover" alt="Tomato Photo ${idx + 1}">
+                    <button type="button" onclick="removePhotoAt(${idx})" class="absolute top-1 right-1 bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow hover:bg-red-700">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <span class="absolute bottom-1 left-1 bg-slate-900/70 text-white text-[9px] px-1.5 py-0.5 rounded">사진 ${idx + 1}</span>
+                </div>
+            `).join('');
+        }
+
+        function togglePestFields() {
+            const pestYn = document.getElementById('field-pest-yn').value;
+            const pestType = document.getElementById('field-pest-type');
+            const pestPart = document.getElementById('field-pest-part');
+
+            if (pestYn === 'N') {
+                pestType.value = '해당없음';
+                pestPart.value = '해당없음';
+            }
+        }
+
+        function switchRole(role) {
+            window.currentRole = role;
+            const btnStudent = document.getElementById('btn-mode-student');
+            const btnTeacher = document.getElementById('btn-mode-teacher');
+            const secStudent = document.getElementById('section-student');
+            const secTeacher = document.getElementById('section-teacher');
+            const roleBadge = document.getElementById('role-badge');
+
+            if (role === 'student') {
+                btnStudent.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition duration-200 bg-white text-slate-800 shadow-sm";
+                btnTeacher.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition duration-200 text-slate-600 hover:text-slate-800";
+                secStudent.classList.remove('hidden');
+                secTeacher.classList.add('hidden');
+                roleBadge.className = "font-medium bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded text-[10px]";
+                roleBadge.innerText = "학생 작성 모드";
+            } else {
+                btnTeacher.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition duration-200 bg-white text-slate-800 shadow-sm";
+                btnStudent.className = "px-4 py-1.5 text-xs font-semibold rounded-lg transition duration-200 text-slate-600 hover:text-slate-800";
+                secStudent.classList.add('hidden');
+                secTeacher.classList.remove('hidden');
+                roleBadge.className = "font-medium bg-red-200 text-red-800 px-2 py-0.5 rounded text-[10px]";
+                roleBadge.innerText = "교사 지도·검토 모드";
+
+                if (window.isTeacherUnlocked) {
+                    document.getElementById('teacher-lock-screen').classList.add('hidden');
+                    document.getElementById('teacher-dashboard').classList.remove('hidden');
+                    renderTeacherDashboard();
+                } else {
+                    document.getElementById('teacher-lock-screen').classList.remove('hidden');
+                    document.getElementById('teacher-dashboard').classList.add('hidden');
+                }
+            }
+        }
+
+        function setStudentTab(tab) {
+            const tabs = ['new', 'list', 'chart'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const container = document.getElementById(`student-tab-${t}`);
+                if (t === tab) {
+                    btn.className = "px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white shadow-sm flex items-center";
+                    container.classList.remove('hidden');
+                } else {
+                    btn.className = "px-4 py-2 text-sm font-medium rounded-lg text-slate-600 hover:bg-slate-100 flex items-center";
+                    container.classList.add('hidden');
+                }
+            });
+
+            if (tab === 'list') renderStudentLogsList();
+            if (tab === 'chart') renderStudentGrowthChart();
+        }
+
+        function unlockTeacherMode() {
+            const pin = document.getElementById('teacher-pin-input').value;
+            if (pin === window.teacherPin || pin === "3571") {
+                window.isTeacherUnlocked = true;
+                document.getElementById('teacher-lock-screen').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('hidden');
+                document.getElementById('teacher-pin-err').classList.add('hidden');
+                renderTeacherDashboard();
+            } else {
+                document.getElementById('teacher-pin-err').classList.remove('hidden');
+            }
+        }
+
+        // ====================================================================
+        // TEACHER DASHBOARD RENDER FUNCTION (Fixes ReferenceError)
+        // ====================================================================
+        function renderTeacherDashboard() {
+            const tableBody = document.getElementById('teacher-table-body');
+            if (!tableBody) return;
+
+            const logs = window.allJournals || [];
+
+            // 1. Calculate and update statistics widgets
+            const total = logs.length;
+            const pending = logs.filter(l => !l.isTeacherConfirmed).length;
+            const questions = logs.filter(l => l.question && l.question.trim().length > 0).length;
+            const confirmed = logs.filter(l => l.isTeacherConfirmed).length;
+            const doneRate = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+
+            document.getElementById('stat-total-count').innerText = `${total}건`;
+            document.getElementById('stat-pending-count').innerText = `${pending}건`;
+            document.getElementById('stat-questions-count').innerText = `${questions}건`;
+            document.getElementById('stat-done-rate').innerText = `${doneRate}%`;
+
+            // 2. Dynamically update class options in select filter
+            const classSelect = document.getElementById('teacher-filter-class');
+            if (classSelect) {
+                const currentVal = classSelect.value;
+                const classes = Array.from(new Set(logs.map(l => l.studentClass).filter(Boolean))).sort();
+                classSelect.innerHTML = `<option value="ALL">전체 학년/반</option>` +
+                    classes.map(c => `<option value="${c}" ${c === currentVal ? 'selected' : ''}>${c}</option>`).join('');
+            }
+
+            // 3. Filter logs based on inputs
+            const selectedClass = classSelect ? classSelect.value : 'ALL';
+            const selectedStatus = document.getElementById('teacher-filter-status') ? document.getElementById('teacher-filter-status').value : 'ALL';
+            const searchQuery = document.getElementById('teacher-search-input') ? document.getElementById('teacher-search-input').value.toLowerCase().trim() : '';
+
+            let filtered = logs.filter(l => {
+                if (selectedClass !== 'ALL' && l.studentClass !== selectedClass) return false;
+                if (selectedStatus === 'PENDING' && l.isTeacherConfirmed) return false;
+                if (selectedStatus === 'CONFIRMED' && !l.isTeacherConfirmed) return false;
+                if (selectedStatus === 'QUESTION' && (!l.question || !l.question.trim())) return false;
+                if (searchQuery && (!l.studentName || !l.studentName.toLowerCase().includes(searchQuery))) return false;
+                return true;
+            });
+
+            // 4. Render Table Rows
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-300"></i>
+                            <p class="text-xs font-medium">검색 조건에 맞는 관찰일지가 없습니다.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = filtered.map(l => `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                    <td class="py-3 px-4 text-xs font-medium text-slate-600">${l.date || '-'}</td>
+                    <td class="py-3 px-4 text-xs font-semibold text-slate-800">${l.studentClass || '미입력'}</td>
+                    <td class="py-3 px-4 text-xs font-bold text-slate-900">${l.studentName || '미입력'}</td>
+                    <td class="py-3 px-4 text-xs text-center font-bold text-red-600 bg-red-50/50 rounded">${l.week || 1}주차</td>
+                    <td class="py-3 px-4 text-xs font-medium">${l.height || 0}cm / ${l.leafCount || 0}장</td>
+                    <td class="py-3 px-4 text-xs">
+                        ${l.pestYN === 'Y' ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-bug mr-1"></i>${l.pestType || '이상발견'}</span>` : `<span class="text-slate-400 text-[11px]">정상</span>`}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        ${l.question && l.question.trim() ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700" title="${l.question.replace(/"/g, '&quot;')}"><i class="fa-solid fa-comment-dots mr-1"></i>질문 있음</span>` : `<span class="text-slate-300">-</span>`}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        ${l.isTeacherConfirmed ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i>확인 완료</span>` : `<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700"><i class="fa-solid fa-clock mr-1"></i>검토 대기</span>`}
+                    </td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        <button onclick="openDetailModal('${l.id}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg shadow-sm transition">
+                            검토 & 피드백
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleJournalSubmit(e) {
+            e.preventDefault();
+
+            let sketchBase64 = null;
+            if (canvas) {
+                const blank = document.createElement('canvas');
+                blank.width = canvas.width;
+                blank.height = canvas.height;
+                if (canvas.toDataURL() !== blank.toDataURL()) {
+                    sketchBase64 = canvas.toDataURL();
+                }
+            }
+
+            const journalData = {
+                date: document.getElementById('field-date').value,
+                studentClass: document.getElementById('field-class').value.trim(),
+                studentName: document.getElementById('field-student-name').value.trim(),
+                week: Number(document.getElementById('field-week').value),
+                daysAfterSowing: Number(document.getElementById('field-days').value),
+                password: document.getElementById('field-password').value.trim(),
+                
+                height: Number(document.getElementById('field-height').value),
+                leafCount: Number(document.getElementById('field-leaf-count').value),
+                stemThickness: Number(document.getElementById('field-stem').value),
+                leafColor: document.getElementById('field-leaf-color').value,
+                rootCondition: document.getElementById('field-root-condition').value,
+                floweringStatus: document.getElementById('field-flowering').value,
+
+                temperature: Number(document.getElementById('field-temp').value),
+                humidity: Number(document.getElementById('field-humidity').value),
+                weather: document.getElementById('field-weather').value,
+                waterAmount: Number(document.getElementById('field-water').value),
+                fertilizer: document.getElementById('field-fertilizer').value,
+
+                pestYN: document.getElementById('field-pest-yn').value,
+                pestType: document.getElementById('field-pest-type').value,
+                pestPart: document.getElementById('field-pest-part').value,
+                pestAction: document.getElementById('field-pest-action').value.trim(),
+
+                todayActivity: document.getElementById('field-act-today').value.trim(),
+                reflection: document.getElementById('field-reflection').value.trim(),
+                question: document.getElementById('field-question').value.trim(),
+                nextPlan: document.getElementById('field-next-plan').value.trim(),
+
+                photos: photosArray,
+                sketch: sketchBase64,
+                referenceUrl: document.getElementById('field-reference-url').value.trim()
+            };
+
+            const docId = document.getElementById('editing-doc-id').value;
+            const success = await window.saveJournalDoc(journalData, docId || null);
+
+            if (success) {
+                alert(docId ? '관찰일지가 성공적으로 수정되었습니다!' : '관찰일지가 성공적으로 제출되었습니다!');
+                resetForm();
+                setStudentTab('list');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('form-journal').reset();
+            document.getElementById('editing-doc-id').value = '';
+            document.getElementById('form-mode-label').innerText = '신규 작성 중';
+            document.getElementById('form-mode-label').className = 'font-bold bg-amber-200 px-2.5 py-1 rounded-md text-amber-900';
+            document.getElementById('submit-btn-text').innerText = '관찰일지 제출하기';
+            document.getElementById('field-date').value = new Date().toISOString().split('T')[0];
+            clearCanvas();
+            photosArray = [];
+            renderPhotoPreviews();
+        }
+
+        function renderStudentLogsList() {
+            const container = document.getElementById('student-logs-container');
+            const searchQuery = document.getElementById('student-search-name').value.toLowerCase().trim();
+
+            if (!container) return;
+
+            let logs = window.allJournals || [];
+            if (searchQuery) {
+                logs = logs.filter(l => l.studentName && l.studentName.toLowerCase().includes(searchQuery));
+            }
+
+            if (logs.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400">
+                        <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
+                        <p class="text-sm font-medium">제출된 토마토 관찰일지가 없습니다.</p>
+                        <p class="text-xs text-slate-400 mt-1">상단의 [새 일지 작성] 버튼을 눌러 첫 일지를 기록해 보세요!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                    <div class="p-5 space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+                                    ${log.week ? log.week + '주차 실습' : '실습일지'}
+                                </span>
+                                <h4 class="font-bold text-slate-800 text-base mt-1.5">${log.studentName || '미입력'} <span class="text-xs font-normal text-slate-500">(${log.studentClass || ''})</span></h4>
+                            </div>
+                            ${log.isTeacherConfirmed ? 
+                                `<span class="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center">
+                                    <i class="fa-solid fa-check-double mr-1"></i>교사 확인
+                                </span>` : 
+                                `<span class="bg-amber-100 text-amber-800 text-[11px] font-medium px-2.5 py-1 rounded-full">
+                                    <i class="fa-solid fa-clock mr-1"></i>검토 대기
+                                </span>`
+                            }
+                        </div>
+
+                        <div class="text-xs text-slate-500 space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <div class="flex justify-between"><span>작성일:</span> <span class="font-semibold text-slate-700">${log.date}</span></div>
+                            <div class="flex justify-between"><span>파종 후:</span> <span class="font-semibold text-slate-700">${log.daysAfterSowing || 0}일차</span></div>
+                            <div class="flex justify-between"><span>초장 / 잎개수:</span> <span class="font-semibold text-emerald-700">${log.height || 0}cm / ${log.leafCount || 0}장</span></div>
+                            <div class="flex justify-between"><span>날씨 / 뿌리:</span> <span class="font-semibold text-slate-700">${log.weather || '맑음'} / ${log.rootCondition || '미입력'}</span></div>
+                        </div>
+
+                        <div class="text-xs text-slate-600 line-clamp-2">
+                            <b>오늘의 활동:</b> ${log.todayActivity || '내용 없음'}
+                        </div>
+
+                        ${log.teacherComment ? `
+                            <div class="bg-purple-50 border border-purple-100 p-2.5 rounded-xl text-xs text-purple-900 space-y-1">
+                                <p class="font-bold text-purple-700 flex items-center"><i class="fa-solid fa-chalkboard-user mr-1"></i>선생님 한마디 (등급: ${log.teacherGrade || 'A'})</p>
+                                <p class="line-clamp-2 text-[11px]">${log.teacherComment}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <button onclick="requestViewLog('${log.id}')" class="text-slate-600 font-semibold hover:text-slate-900 flex items-center bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
+                            <i class="fa-solid fa-lock text-amber-500 mr-1"></i>상세보기
+                        </button>
+                        <button onclick="requestEditLog('${log.id}')" class="text-red-600 font-semibold hover:text-red-700 flex items-center bg-white px-2.5 py-1 rounded-lg border border-red-200 shadow-sm">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i>수정하기
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterStudentLogs() {
+            renderStudentLogsList();
+        }
+
+        function requestViewLog(docId) {
+            const log = window.allJournals.find(j => j.id === docId);
+            if (!log) return;
+
+            if (window.isTeacherUnlocked) {
+                openDetailModal(docId);
+            } else {
+                pendingAuthAction = 'view';
+                window.pendingAuthDoc = log;
+                document.getElementById('auth-modal-title').innerText = '일지 조회 비밀번호 확인';
+                document.getElementById('auth-modal-desc').innerText = '개인정보 보호를 위해 작성 시 설정한 비밀번호를 입력해주세요.';
+                document.getElementById('auth-input-pass').value = '';
+                document.getElementById('auth-err-msg').classList.add('hidden');
+                document.getElementById('modal-auth').classList.remove('hidden');
+            }
+        }
+
+        function requestEditLog(docId) {
+            const log = window.allJournals.find(j => j.id === docId);
+            if (!log) return;
+
+            if (window.isTeacherUnlocked) {
+                populateEditForm(log);
+            } else {
+                pendingAuthAction = 'edit';
+                window.pendingAuthDoc = log;
+                document.getElementById('auth-modal-title').innerText = '일지 수정 비밀번호 확인';
+                document.getElementById('auth-modal-desc').innerText = '일지를 수정하려면 작성 시 설정한 비밀번호를 입력해주세요.';
+                document.getElementById('auth-input-pass').value = '';
+                document.getElementById('auth-err-msg').classList.add('hidden');
+                document.getElementById('modal-auth').classList.remove('hidden');
+            }
+        }
+
+        function closeAuthModal() {
+            document.getElementById('modal-auth').classList.add('hidden');
+            window.pendingAuthDoc = null;
+            pendingAuthAction = null;
+        }
+
+        function confirmStudentAuth() {
+            const enteredPass = document.getElementById('auth-input-pass').value.trim();
+            if (!window.pendingAuthDoc) return;
+
+            if (enteredPass === window.pendingAuthDoc.password || window.isTeacherUnlocked) {
+                const log = window.pendingAuthDoc;
+                const action = pendingAuthAction;
+                closeAuthModal();
+
+                if (action === 'view') {
+                    openDetailModal(log.id);
+                } else if (action === 'edit') {
+                    populateEditForm(log);
+                }
+            } else {
+                document.getElementById('auth-err-msg').classList.remove('hidden');
+            }
+        }
+
+        function populateEditForm(log) {
+            document.getElementById('editing-doc-id').value = log.id;
+            document.getElementById('form-mode-label').innerText = `일지 수정 중 (${log.studentName})`;
+            document.getElementById('form-mode-label').className = 'font-bold bg-purple-200 px-2.5 py-1 rounded-md text-purple-900';
+            document.getElementById('submit-btn-text').innerText = '수정 완료하기';
+
+            document.getElementById('field-date').value = log.date;
+            document.getElementById('field-class').value = log.studentClass || '';
+            document.getElementById('field-student-name').value = log.studentName || '';
+            document.getElementById('field-week').value = log.week || 1;
+            document.getElementById('field-days').value = log.daysAfterSowing || 0;
+            document.getElementById('field-password').value = log.password || '';
+
+            document.getElementById('field-height').value = log.height || '';
+            document.getElementById('field-leaf-count').value = log.leafCount || '';
+            document.getElementById('field-stem').value = log.stemThickness || '';
+            document.getElementById('field-leaf-color').value = log.leafColor || '진한 초록';
+            document.getElementById('field-root-condition').value = log.rootCondition || '';
+            document.getElementById('field-flowering').value = log.floweringStatus || '영양 생장기 (미개화)';
+
+            document.getElementById('field-temp').value = log.temperature || '';
+            document.getElementById('field-humidity').value = log.humidity || '';
+            document.getElementById('field-weather').value = log.weather || '맑음';
+            document.getElementById('field-water').value = log.waterAmount || '';
+            document.getElementById('field-fertilizer').value = log.fertilizer || '없음';
+
+            document.getElementById('field-pest-yn').value = log.pestYN || 'N';
+            document.getElementById('field-pest-type').value = log.pestType || '해당없음';
+            document.getElementById('field-pest-part').value = log.pestPart || '해당없음';
+            document.getElementById('field-pest-action').value = log.pestAction || '';
+
+            document.getElementById('field-act-today').value = log.todayActivity || '';
+            document.getElementById('field-reflection').value = log.reflection || '';
+            document.getElementById('field-question').value = log.question || '';
+            document.getElementById('field-next-plan').value = log.nextPlan || '';
+            document.getElementById('field-reference-url').value = log.referenceUrl || '';
+
+            photosArray = log.photos || (log.photo ? [log.photo] : []);
+            renderPhotoPreviews();
+
+            setStudentTab('new');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function openDetailModal(docId) {
+            const log = window.allJournals.find(j => j.id === docId);
+            if (!log) return;
+
+            window.currentEditingDocId = docId;
+            document.getElementById('modal-title').innerText = `${log.studentName} 학생의 토마토 재배일지 (${log.date})`;
+
+            const photosList = log.photos || (log.photo ? [log.photo] : []);
+
+            const body = document.getElementById('modal-body-content');
+            body.innerHTML = `
+                <!-- Basic Info Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div><p class="text-[11px] text-slate-400">학생 정보</p><p class="font-bold text-slate-800">${log.studentClass} ${log.studentName}</p></div>
+                    <div><p class="text-[11px] text-slate-400">실습 회차 / 경과일</p><p class="font-bold text-slate-800">${log.week}주차 (${log.daysAfterSowing}일차)</p></div>
+                    <div><p class="text-[11px] text-slate-400">생육 수치</p><p class="font-bold text-emerald-600">초장 ${log.height}cm / 잎 ${log.leafCount}장 / 줄기 ${log.stemThickness}mm</p></div>
+                    <div><p class="text-[11px] text-slate-400">뿌리 / 결실</p><p class="font-bold text-slate-800">${log.rootCondition || '미입력'} / ${log.floweringStatus}</p></div>
+                </div>
+
+                <!-- Environment & Pest Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-sky-50/50 p-4 rounded-xl border border-sky-100 space-y-1">
+                        <h5 class="font-bold text-sky-800 text-xs border-b border-sky-200 pb-1 mb-2"><i class="fa-solid fa-cloud-sun mr-1"></i>환경 조건</h5>
+                        <p class="text-xs"><b>기온/습도:</b> ${log.temperature}°C / ${log.humidity}%</p>
+                        <p class="text-xs"><b>날씨/급수:</b> ${log.weather || '맑음'} / ${log.waterAmount}ml</p>
+                        <p class="text-xs"><b>시비 여부:</b> ${log.fertilizer}</p>
+                    </div>
+                    <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-100 space-y-1">
+                        <h5 class="font-bold text-amber-800 text-xs border-b border-amber-200 pb-1 mb-2"><i class="fa-solid fa-bug mr-1"></i>병해충 관찰</h5>
+                        <p class="text-xs"><b>이상 유무:</b> ${log.pestYN === 'Y' ? '이상 발견' : '정상'}</p>
+                        <p class="text-xs"><b>증상/부위:</b> ${log.pestType} (${log.pestPart})</p>
+                        <p class="text-xs"><b>조치 내용:</b> ${log.pestAction || '없음'}</p>
+                    </div>
+                </div>
+
+                <!-- Narrative Section -->
+                <div class="space-y-3 bg-white p-4 rounded-xl border border-slate-200">
+                    <div>
+                        <h5 class="font-bold text-slate-700 text-xs">1. 오늘의 활동 내용</h5>
+                        <p class="text-xs text-slate-600 mt-1 whitespace-pre-wrap bg-slate-50 p-2.5 rounded-lg border border-slate-100">${log.todayActivity}</p>
+                    </div>
+                    <div>
+                        <h5 class="font-bold text-slate-700 text-xs">2. 관찰 소감 및 느낀 점</h5>
+                        <p class="text-xs text-slate-600 mt-1 whitespace-pre-wrap bg-slate-50 p-2.5 rounded-lg border border-slate-100">${log.reflection}</p>
+                    </div>
+                    ${log.question ? `
+                        <div>
+                            <h5 class="font-bold text-purple-700 text-xs"><i class="fa-solid fa-circle-question mr-1"></i>3. 궁금한 점 (교사 질문)</h5>
+                            <p class="text-xs text-purple-900 mt-1 whitespace-pre-wrap bg-purple-50 p-2.5 rounded-lg border border-purple-100 font-medium">${log.question}</p>
+                        </div>
+                    ` : ''}
+                    <div>
+                        <h5 class="font-bold text-slate-700 text-xs">4. 다음 재배 실습 계획</h5>
+                        <p class="text-xs text-slate-600 mt-1 whitespace-pre-wrap bg-slate-50 p-2.5 rounded-lg border border-slate-100">${log.nextPlan}</p>
+                    </div>
+                </div>
+
+                <!-- Attachments (Photos Grid & Sketch) -->
+                ${(photosList.length > 0 || log.sketch || log.referenceUrl) ? `
+                    <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h5 class="font-bold text-slate-700 text-xs"><i class="fa-solid fa-paperclip mr-1"></i>첨부 자료</h5>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            ${photosList.length > 0 ? `
+                                <div>
+                                    <p class="text-[11px] text-slate-500 mb-1 font-semibold">관찰 현장 사진 (${photosList.length}장)</p>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        ${photosList.map((p, pIdx) => `<img src="${p}" class="h-28 w-full object-cover rounded-lg bg-white border border-slate-200 shadow-sm" alt="Photo ${pIdx+1}">`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${log.sketch ? `
+                                <div>
+                                    <p class="text-[11px] text-slate-500 mb-1 font-semibold">학생 관찰 스케치</p>
+                                    <img src="${log.sketch}" class="max-h-48 rounded-lg object-contain bg-white border border-slate-200 shadow-sm" alt="Student sketch">
+                                </div>
+                            ` : ''}
+                        </div>
+                        ${log.referenceUrl ? `
+                            <p class="text-xs"><b>참고 URL:</b> <a href="${log.referenceUrl}" target="_blank" class="text-blue-600 underline">${log.referenceUrl}</a></p>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('modal-teacher-comment').value = log.teacherComment || '';
+            document.getElementById('modal-teacher-grade').value = log.teacherGrade || 'A+';
+
+            const controls = document.getElementById('modal-teacher-controls');
+            if (window.isTeacherUnlocked) {
+                controls.classList.remove('hidden');
+            } else {
+                controls.classList.add('hidden');
+            }
+
+            document.getElementById('modal-detail').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('modal-detail').classList.add('hidden');
+            window.currentEditingDocId = null;
+        }
+
+        async function saveTeacherFeedback(isConfirmed) {
+            if (!window.currentEditingDocId) return;
+
+            const comment = document.getElementById('modal-teacher-comment').value.trim();
+            const grade = document.getElementById('modal-teacher-grade').value;
+
+            const ok = await window.updateTeacherFeedbackDoc(window.currentEditingDocId, comment, grade, isConfirmed);
+            if (ok) {
+                alert(isConfirmed ? '교사 확인 완료 처리되었습니다!' : '피드백이 저장되었습니다.');
+                closeDetailModal();
+            }
+        }
+
+        async function deleteCurrentJournal() {
+            if (!window.currentEditingDocId) return;
+            if (confirm('정말로 이 일지를 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) {
+                const ok = await window.deleteJournalDoc(window.currentEditingDocId);
+                if (ok) {
+                    alert('삭제가 완료되었습니다.');
+                    closeDetailModal();
+                }
+            }
+        }
+
+        function renderStudentGrowthChart() {
+            const ctxChart = document.getElementById('student-growth-chart');
+            if (!ctxChart) return;
+
+            const logs = window.allJournals || [];
+            if (logs.length === 0) return;
+
+            const weekData = {};
+            logs.forEach(l => {
+                const w = l.week || 1;
+                if (!weekData[w]) weekData[w] = { heightSum: 0, leafSum: 0, count: 0 };
+                weekData[w].heightSum += (l.height || 0);
+                weekData[w].leafSum += (l.leafCount || 0);
+                weekData[w].count += 1;
+            });
+
+            const weeksSorted = Object.keys(weekData).sort((a, b) => Number(a) - Number(b));
+            const avgHeights = weeksSorted.map(w => (weekData[w].heightSum / weekData[w].count).toFixed(1));
+            const avgLeaves = weeksSorted.map(w => (weekData[w].leafSum / weekData[w].count).toFixed(1));
+
+            if (window.studentGrowthChartInstance) {
+                window.studentGrowthChartInstance.destroy();
+            }
+
+            window.studentGrowthChartInstance = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    labels: weeksSorted.map(w => `${w}주차`),
+                    datasets: [
+                        {
+                            label: '평균 초장 (cm)',
+                            data: avgHeights,
+                            borderColor: '#e53e3e',
+                            backgroundColor: 'rgba(229, 62, 62, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '평균 잎 개수 (장)',
+                            data: avgLeaves,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: '초장 (cm)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: '잎 개수 (장)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function exportToCSV() {
+            const logs = window.allJournals || [];
+            if (logs.length === 0) {
+                alert('내보낼 데이터가 없습니다.');
+                return;
+            }
+
+            let csv = '\uFEFF'; // BOM for UTF-8 Korean support in Excel
+            csv += '작성일,학년반번호,이름,주차,경과일,초장(cm),잎개수(장),줄기굵기(mm),잎색깔,뿌리상태,결실여부,기온(C),습도(%),날씨,급수(ml),비료,병해충,질문,교사확인,교사평가\n';
+
+            logs.forEach(l => {
+                const row = [
+                    `"${l.date || ''}"`,
+                    `"${l.studentClass || ''}"`,
+                    `"${l.studentName || ''}"`,
+                    `"${l.week || 1}"`,
+                    `"${l.daysAfterSowing || 0}"`,
+                    `"${l.height || 0}"`,
+                    `"${l.leafCount || 0}"`,
+                    `"${l.stemThickness || 0}"`,
+                    `"${l.leafColor || ''}"`,
+                    `"${l.rootCondition || ''}"`,
+                    `"${l.floweringStatus || ''}"`,
+                    `"${l.temperature || 0}"`,
+                    `"${l.humidity || 0}"`,
+                    `"${l.weather || '맑음'}"`,
+                    `"${l.waterAmount || 0}"`,
+                    `"${l.fertilizer || ''}"`,
+                    `"${l.pestYN === 'Y' ? l.pestType : '정상'}"`,
+                    `"${(l.question || '').replace(/"/g, '""')}"`,
+                    `"${l.isTeacherConfirmed ? '완료' : '대기'}"`,
+                    `"${l.teacherGrade || ''}"`
+                ];
+                csv += row.join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `토마토_재배관찰일지_전체_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
